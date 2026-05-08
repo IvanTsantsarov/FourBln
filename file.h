@@ -29,7 +29,7 @@ class File
     FILE *open(bool isReadOnly);
 
     // buffer with 2 nots counters for each value
-    uint8_t mCounters[BUFFER_BYTES_COUNT] = {0};
+    uint8_t* mCounters = nullptr;
 
     // Internal struct
     typedef struct BufferIndices {
@@ -50,6 +50,7 @@ class File
 
 public:
     File();
+    ~File();
     bool init();
 
     // Sets a new count in the buffer
@@ -63,7 +64,7 @@ public:
         // read current byte and mask it
         uint8_t byte = mCounters[idx.mByte] & mask;
         // write new byte with altered bits
-        mCounters[idx.mByte] = byte & (value << idx.mBits);
+        mCounters[idx.mByte] = byte | (value << idx.mBits);
     }
 
     // Returs a counter from the buffer

@@ -2,7 +2,15 @@
 
 File::File()
 {
+    mCounters = new uint8_t [BUFFER_BYTES_COUNT];
+    for( auto i = 0; i < BUFFER_BYTES_COUNT; i ++) {
+        mCounters[i] = 0;
+    }
+}
 
+File::~File()
+{
+    delete [] mCounters;
 }
 
 
