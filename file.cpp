@@ -18,9 +18,9 @@ File::~File()
 }
 
 
-FILE * File::open(bool isReadOnly)
+FILE * File::open4blnFile(bool isReadOnly)
 {
-    if (FILE *file = fopen(FILE_INPUT_PATH, isReadOnly ? "r" : "wb")) {
+    if (FILE *file = fopen(mPathTo4blnFile.c_str(), isReadOnly ? "rb" : "wb")) {
         return file;
     }
 
@@ -83,50 +83,52 @@ char* File::toInversedBase36(ULONG number, char* result)
     return result;
 }
 
-bool File::init()
+bool File::init(const char *pathTo4blnFile)
 {
-    FILE* file = open(true);
+    mPathTo4blnFile = string(pathTo4blnFile);
+
+    FILE* file = open4blnFile(true);
     if( file ) {
 
         if( fseek(file, 0, SEEK_END) ) {
-            Msg::error( "Error big file error moving file pointer!");
+            Msg::error( "Error 4bln file moving file pointer!");
             return false;
         }
 
         UINT fsize = ftell(file);
-        if( fsize != FILE_INPUT_BYTES_SIZE ) {
+        if( fsize != FILE_4BLN_BYTES_SIZE ) {
             fclose(file);
-            Msg::warning( string("Big file is wrong size!") + to_string(fsize) + "!=" + to_string(FILE_INPUT_BYTES_SIZE));
+            Msg::warning( string("4bln file is wrong size!") + to_string(fsize) + "!=" + to_string(FILE_4BLN_BYTES_SIZE));
         }else {
             fclose(file);
-            Msg::info("Big file OK.");
+            Msg::info("4bln file OK.");
             return true;
         }
     }else {
         Msg::info("Big file not existing.");
     }
 
-    file = open(false);
+    file = open4blnFile(false);
     if( !file) {
-        Msg::error( "Error opening big file for writing!");
+        Msg::error( "Error opening 4bln file for writing!");
         return false;
     }
 
-    printf("Generating the big file:");
+    printf("Generating the 4bln file:");
 
     Msg::push();
 
     ULONG perc = 0;
-    for(ULONG i = 0; i < FILE_INPUT_UINTS_COUNT; i++) {
+    for(ULONG i = 0; i < FILE_4BLN_UINTS_COUNT; i++) {
         UINT randomValue = rand();
         const size_t sz = fwrite(&randomValue, UINT_SIZE, 1, file );
         if( !sz ) {
-            Msg::info(string("Error generating big file on position:") + to_string(i));
+            Msg::info(string("Error generating 4bln file on position:") + to_string(i));
             fclose(file);
             return false;
         }
 
-        ULONG newPerc = i * 100 / FILE_INPUT_UINTS_COUNT;
+        ULONG newPerc = i * 100 / FILE_4BLN_UINTS_COUNT;
         if( newPerc != perc) {
             Msg::pop();
             printf("%lu%%", newPerc);
@@ -146,6 +148,7 @@ bool File::init()
 void File::allocateCounters()
 {
     assert(!mCounters);
+    Msg::info(string("Allocating ") + to_string(BUFFER_BYTES_COUNT) + " bytes...");
     mCounters = new uint8_t [BUFFER_BYTES_COUNT];
     for( auto i = 0; i < BUFFER_BYTES_COUNT; i ++) {
         mCounters[i] = 0;
@@ -154,34 +157,40 @@ void File::allocateCounters()
 
 bool File::countAll()
 {
-    FILE* file = open(true);
+    FILE* file = open4blnFile(true);
     if( !file) {
         Msg::error("taskCounting: Error opening file!");
         return false;
     }
 
-    printf("Counting values in the big file:");
+    printf("Counting values in the 4bln file:");
 
     Msg::push();
 
+    UINT* buffer = new UINT[FILE_4BLN_BUFFER_UINTS_COUNT];
     ULONG perc = 0;
-    for(ULONG i = 0; i < FILE_INPUT_UINTS_COUNT; i++) {
-        UINT value = 0;
-        const size_t sz = fread(&value, UINT_SIZE, 1, file );
+
+    for(ULONG it = 0; it < FILE_4BLN_READ_ITERATIONS; it++) {
+        const size_t sz = fread(buffer, UINT_SIZE, FILE_4BLN_BUFFER_UINTS_COUNT, file );
         if( !sz) {
-            Msg::info(string("taskCounting:Error reading big file on position:") + to_string(i));
+            Msg::info(string("taskCounting:Error reading 4bln file on iteration:") + to_string(it));
+            delete [] buffer;
             fclose(file);
             return false;
         }
 
-        uint8_t count = getBufferCount(value);
-        // increment the count of the digit if less then two full bits (0x3)
-        if( count < TWO_BITS ) {
-            count++;
-            setBufferCount(i, value);
+        for(ULONG iv = 0; iv < FILE_4BLN_BUFFER_UINTS_COUNT; iv++) {
+            UINT value = buffer[iv];
+
+            uint8_t count = getBufferCount(value);
+            // increment the count of the digit if less then two full bits (0x3)
+            if( count < TWO_BITS ) {
+                count++;
+                setBufferCount(value, count);
+            }
         }
 
-        ULONG newPerc = i * 100 / FILE_INPUT_UINTS_COUNT;
+        ULONG newPerc = it * 100 / FILE_4BLN_READ_ITERATIONS;
         if( newPerc != perc) {
             Msg::pop();
             printf("%lu%%", newPerc);
@@ -189,6 +198,8 @@ bool File::countAll()
             perc = newPerc;
         }
     }
+
+    delete [] buffer;
 
     Msg::pop();
     printf("100%%");
@@ -210,7 +221,7 @@ bool File::countModels(const char* pathToJsonFile)
     FILE *file = fopen(pathToJsonFile, "rb");
     if (!file) {
         Msg::error(string("Error opening JSON file:") + pathToJsonFile);
-        Msg::info("JSON file must be in the running directory of this application.");
+        Msg::info("JSON file must be in the upper directory of the working one.");
         return false;
     }
 
@@ -309,13 +320,18 @@ bool File::countModels(const char* pathToJsonFile)
     // because it's too slow to read byte by byte
     ULONG skippedCount = 0;
     ULONG allBytesRed = 0;
+    uint8_t prevPerc = 0;
     while(UINT bytesRed =
            fread(&chunk[skippedCount], 1, BIG_JSON_READ_CHUNK - skippedCount, file)) {
 
         allBytesRed += bytesRed;
 
         Msg::pop();
-        printf("%llu%%", allBytesRed * 100ull/fsize );
+        uint8_t perc = allBytesRed * 100ull/fsize;
+        if( perc != prevPerc) {
+            printf("%u%%", perc );
+            prevPerc = perc;
+        }
 
         // process all records in that chunk
         ULONG offset = 0;

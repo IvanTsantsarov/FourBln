@@ -8,17 +8,22 @@ typedef uint32_t UINT;
 typedef uint64_t ULONG;
 #define UINT_SIZE (sizeof(UINT))
 
-#define FILE_INPUT_PATH "fourbln.bin"
-
 // Count of all 32 bits unsigned integers
-#define FILE_INPUT_UINTS_COUNT 1000000000ull
+#define FILE_4BLN_UINTS_COUNT 1000000000ull
+
+// For the read buffer optimization
+#define FILE_4BLN_BUFFER_UINTS_COUNT 10000ull
+#define FILE_4BLN_READ_ITERATIONS (FILE_4BLN_UINTS_COUNT/FILE_4BLN_BUFFER_UINTS_COUNT)
 
 // Count of bytes that contains all integers (multiplied by 4)
-#define FILE_INPUT_BYTES_SIZE (FILE_INPUT_UINTS_COUNT<<2)
+#define FILE_4BLN_BYTES_SIZE (FILE_4BLN_UINTS_COUNT<<2)
 
 // We are gone use bits buffer to reduce memory usage
 // by allocating a counter for each uint that is only 2 bits long
-#define BUFFER_BITS_COUNT (FILE_INPUT_UINTS_COUNT<<1)
+// resulting in 1 (one) GBytes buffer for storing counters
+// saving 3 GBytes if counters were 8 bits
+#define UINT_MAX 0xFFFFFFFFull
+#define BUFFER_BITS_COUNT (UINT_MAX<<1)
 #define BUFFER_BYTES_COUNT (BUFFER_BITS_COUNT>>3)
 
 #define TWO_BITS 0x3 //b00000011
@@ -32,7 +37,8 @@ typedef uint64_t ULONG;
 
 class File
 {
-    FILE *open(bool isReadOnly);
+    FILE *open4blnFile(bool isReadOnly);
+    string mPathTo4blnFile;
 
     // buffer with 2 nots counters for each value
     uint8_t* mCounters = nullptr;
@@ -74,12 +80,12 @@ class File
 public:
     File();
     ~File();
-    bool init();
+    bool init(const char *pathTo4blnFile);
 
     // Sets a new count in the buffer
-    void setBufferCount(ULONG index, uint8_t value) {
+    void setBufferCount(ULONG index, uint8_t count) {
         // new count must not be bigger the 3
-        assert(value <= TWO_BITS);
+        assert(count <= TWO_BITS);
         // calculate byte&bits indices
         BufferIndices idx(index);
         // create a bit mask with erased bits at specified index
@@ -87,7 +93,7 @@ public:
         // read current byte and mask it
         uint8_t byte = mCounters[idx.mByte] & mask;
         // write new byte with altered bits
-        mCounters[idx.mByte] = byte | (value << idx.mBits);
+        mCounters[idx.mByte] = byte | (count << idx.mBits);
     }
 
     // Returs a counter from the buffer

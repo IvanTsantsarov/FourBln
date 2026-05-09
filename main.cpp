@@ -1,5 +1,8 @@
 #include "file.h"
 
+#define FILE_4BLN_PATH "../fourbln.bin"
+#define BIG_JSON_FILE_PATH "../bigf.json"
+
 // Not a standart lib sadly, so we need to decompress the big boy
 // #include <zlib.h>
 
@@ -16,13 +19,13 @@ given input -> output
 void taskCountingA(const File& file)
 {
     ULONG uniquesCount = 0;
-    for(ULONG i = 0; i < FILE_INPUT_UINTS_COUNT; i++) {
+    for(ULONG i = 0; i < FILE_4BLN_UINTS_COUNT; i++) {
         if( file.getBufferCount(i) > 0 ) {
             uniquesCount ++;
         }
     }
 
-    Msg::info(string("Task Counting a) Uniquest count =") + to_string(uniquesCount));
+    Msg::info(string("\nTask Counting a) Uniquest count =") + to_string(uniquesCount));
 }
 
 
@@ -36,7 +39,7 @@ given input -> output
 void taskCountingB(const File& file)
 {
     ULONG onceSeenCount = 0;
-    for(ULONG i = 0; i < FILE_INPUT_UINTS_COUNT; i++) {
+    for(ULONG i = 0; i < FILE_4BLN_UINTS_COUNT; i++) {
         if( file.getBufferCount(i) == 1 ) {
             onceSeenCount ++;
         }
@@ -56,16 +59,18 @@ any conditionals/ifs, including for/while loops.
 
 void taskFizzbuzz()
 {
+    Msg::info("*** 2) Fizzbuzz ***");
     int counter = 0;
 
     asm volatile (
     ""
     );
+
+    Msg::info("Fizzbuzz finished!");
 }
 
 int main(int argc, char *argv[])
 {
-
     Msg::clrscr();
 
     File file;
@@ -73,16 +78,19 @@ int main(int argc, char *argv[])
     /////////////////////////////////
     ///// Task Counting
     /////////////////////////////////
-/*
-    if( !file.init() ) {
-        Msg::error("Big file error!");
+    ///
+
+    Msg::info("*** Task counting ***");
+
+    if( !file.init(FILE_4BLN_PATH) ) {
+        Msg::error("4bln file error!");
         return -1;
     }
 
     file.allocateCounters();
 
     if( !file.countAll() ) {
-        Msg::error("Big file error!");
+        Msg::error("4bln file error!");
         return -1;
     }
 
@@ -102,6 +110,6 @@ int main(int argc, char *argv[])
     ///// Task Analisys
     /////////////////////////////////
 
-*/
-    file.countModels("bigf.json");
+
+    file.countModels(BIG_JSON_FILE_PATH);
 }
