@@ -23,8 +23,8 @@ typedef uint64_t ULONG;
 
 #define TWO_BITS 0x3 //b00000011
 
-#define BIG_JSON_READ_CHUNK 4096
-// #define BIG_JSON_MODEL_NAME_SIZE 10
+#define BIG_JSON_READ_CHUNK 0xFFFF
+
 
 #define BASE36 36ull
 #define BASE36_MAX_DIGITS 10

@@ -210,6 +210,7 @@ bool File::countModels(const char* pathToJsonFile)
     FILE *file = fopen(pathToJsonFile, "rb");
     if (!file) {
         Msg::error(string("Error opening JSON file:") + pathToJsonFile);
+        Msg::info("JSON file must be in the running directory of this application.");
         return false;
     }
 
@@ -223,12 +224,14 @@ bool File::countModels(const char* pathToJsonFile)
     // But according to chatgpt:
     // Based on industry history, the answer is likely:
     // Tens of thousands of distinct HDD models
-    //Probably somewhere around 30,000–100,000+
+    // Probably somewhere around 30,000–100,000+
     // individual model numbers since 1956
-
     // that's 8KB of memory for the keys
     // and 4KB for the counts (12KB)
-    mMap.reserve(100000);
+    // mMap.reserve(100000);
+    // Baaat as we saw there are few models in the file
+    // so we can minimize it
+    mMap.reserve(1000);
 
     char* chunk = new char[BIG_JSON_READ_CHUNK + 1];
     memset(chunk, 0, BIG_JSON_READ_CHUNK + 1);
@@ -290,7 +293,7 @@ bool File::countModels(const char* pathToJsonFile)
         if( i != mMap.end() ) {
             i->second ++;
         }else {
-            mMap.emplace(modelValue, 0);
+            mMap.emplace(modelValue, 1);
         }
 
         offset = offsetChunk;
