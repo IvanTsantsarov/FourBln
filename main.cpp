@@ -15,8 +15,8 @@ given input -> output
 */
 void taskCountingA(const File& file)
 {
-    LONG uniquesCount = 0;
-    for(LONG i = 0; i < FILE_INPUT_UINTS_COUNT; i++) {
+    ULONG uniquesCount = 0;
+    for(ULONG i = 0; i < FILE_INPUT_UINTS_COUNT; i++) {
         if( file.getBufferCount(i) > 0 ) {
             uniquesCount ++;
         }
@@ -35,8 +35,8 @@ given input -> output
 */
 void taskCountingB(const File& file)
 {
-    LONG onceSeenCount = 0;
-    for(LONG i = 0; i < FILE_INPUT_UINTS_COUNT; i++) {
+    ULONG onceSeenCount = 0;
+    for(ULONG i = 0; i < FILE_INPUT_UINTS_COUNT; i++) {
         if( file.getBufferCount(i) == 1 ) {
             onceSeenCount ++;
         }
@@ -73,7 +73,7 @@ int main(int argc, char *argv[])
     /////////////////////////////////
     ///// Task Counting
     /////////////////////////////////
-
+/*
     if( !file.init() ) {
         Msg::error("Big file error!");
         return -1;
@@ -102,5 +102,5 @@ int main(int argc, char *argv[])
     ///// Task Analisys
     /////////////////////////////////
 
-
+*/
 }

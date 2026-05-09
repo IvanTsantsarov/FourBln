@@ -5,7 +5,7 @@
 #include <unordered_map>
 
 typedef uint32_t UINT;
-typedef uint64_t LONG;
+typedef uint64_t ULONG;
 #define UINT_SIZE (sizeof(UINT))
 
 #define FILE_INPUT_PATH "fourbln.bin"
@@ -25,6 +25,11 @@ typedef uint64_t LONG;
 
 #define BIG_JSON_READ_CHUNK 5196
 #define BIG_JSON_MODEL_NAME_SIZE 10
+
+#define BASE36 36ull
+#define BASE36_MAX_DIGITS 10
+#define BASE36_MAX (BASE36*BASE36*BASE36*BASE36*BASE36*BASE36*BASE36*BASE36*BASE36*BASE36 -1ull)
+
 class File
 {
     FILE *open(bool isReadOnly);
@@ -34,10 +39,10 @@ class File
 
     // Internal struct
     typedef struct BufferIndices {
-        LONG mByte;     // byte index in the buffer
+        ULONG mByte;     // byte index in the buffer
         uint8_t mBits;  // bits index in the byte, indexed by mByte
 
-        inline BufferIndices(LONG index) {
+        inline BufferIndices(ULONG index) {
             // then the whole size of the buffer is shrinked 4 times
             // so to find index of the byte just delete by 4
             mByte = index >> 2;
@@ -49,15 +54,22 @@ class File
     } BufferIndicesStruct;
 
     // For *3) Analysis*
-    // Model names are no more than 9 letters long
-    // so we can use base 36 integer to represent it and
-    // 9^36 = 1,015599567×10¹⁴ combinations are less
+    // Model names are no more than 10 letters long
+    // so we see them as base 36 integer
+    //(26 ascii uppercase alphabets + 10 digits)
+    // and:
+    // 3,65615844×10¹⁵ combinations are less
     // than maximum of 64 bits uint (2^64 = 1,844674407×10¹⁹)
     // just to skip using std::string key in the std::map
     // Also std::unordered_map has the ability to reserv memory
     // that will optimize memory alocation on insertion
-    typedef std::unordered_map<LONG, uint32_t> JsonMap;
+    typedef std::unordered_map<ULONG, uint32_t> JsonMap;
     JsonMap mMap;
+
+    // They are hidden here, so no public person can use them
+    // (read upper comment for more info)
+    static ULONG fromInversedBase36(const char* buffer);
+    static char *toInversedBase36(ULONG number, char* result);
 
 public:
     File();
@@ -65,7 +77,7 @@ public:
     bool init();
 
     // Sets a new count in the buffer
-    void setBufferCount(LONG index, uint8_t value) {
+    void setBufferCount(ULONG index, uint8_t value) {
         // new count must not be bigger the 3
         assert(value <= TWO_BITS);
         // calculate byte&bits indices
@@ -79,7 +91,7 @@ public:
     }
 
     // Returs a counter from the buffer
-    uint8_t getBufferCount(LONG index) const {
+    uint8_t getBufferCount(ULONG index) const {
         BufferIndices idx(index);
         uint8_t byte = mCounters[idx.mByte];
         return static_cast<uint8_t>((byte >> idx.mBits) & TWO_BITS );

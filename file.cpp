@@ -2,6 +2,10 @@
 
 File::File()
 {
+    char buffer[BASE36_MAX_DIGITS+1] = {0};
+    ULONG number = File::fromInversedBase36("HGST2048T");
+    File::toInversedBase36(number, buffer);
+    printf("%s", buffer);
 }
 
 File::~File()
@@ -17,6 +21,59 @@ FILE * File::open(bool isReadOnly)
     }
 
     return nullptr;
+}
+
+// Inversed version is faster, because
+// we skip the cycle to the end of the string
+ULONG File::fromInversedBase36(const char *buffer)
+{
+    ULONG result = 0;
+    ULONG degree = 1;
+    while(*buffer) {
+        char ch = *buffer++;
+        ULONG digit = ch >= 'A' ? ch - ('A' - 10) : ch - '0';
+        result += digit * degree;
+        degree *= BASE36;
+    }
+
+    return result;
+}
+
+char* File::toInversedBase36(ULONG number, char* result)
+{
+    ULONG div = BASE36*BASE36*BASE36*
+               BASE36*BASE36*BASE36*
+               BASE36*BASE36*BASE36;
+
+    int count = 0;
+    int resultPos = 0;
+
+    // skip "seroes" infront
+    while(count < BASE36_MAX_DIGITS) {
+        if( number > div ) {
+            break;
+        }
+        div /= BASE36;
+        count ++;
+    }
+
+    while(count++ < BASE36_MAX_DIGITS) {
+        ULONG digit = number / div;
+        char ch = digit > 9 ? digit + ('A' - 10) : digit + '0';
+        result[resultPos++] = ch;
+        number -= digit * div;
+        div /= BASE36;
+    }
+
+    // and reverse it
+    count = resultPos / 2;
+    for( auto i = 0; i < count; i++) {
+        char swap = result[i];
+        result[i] = result[--resultPos];
+        result[resultPos] = swap;
+    }
+
+    return result;
 }
 
 bool File::init()
@@ -52,8 +109,8 @@ bool File::init()
 
     Msg::push();
 
-    LONG perc = 0;
-    for(LONG i = 0; i < FILE_INPUT_UINTS_COUNT; i++) {
+    ULONG perc = 0;
+    for(ULONG i = 0; i < FILE_INPUT_UINTS_COUNT; i++) {
         UINT randomValue = rand();
         const size_t sz = fwrite(&randomValue, UINT_SIZE, 1, file );
         if( !sz ) {
@@ -62,7 +119,7 @@ bool File::init()
             return false;
         }
 
-        LONG newPerc = i * 100 / FILE_INPUT_UINTS_COUNT;
+        ULONG newPerc = i * 100 / FILE_INPUT_UINTS_COUNT;
         if( newPerc != perc) {
             Msg::pop();
             printf("%lu%%", newPerc);
@@ -100,8 +157,8 @@ bool File::countAll()
 
     Msg::push();
 
-    LONG perc = 0;
-    for(LONG i = 0; i < FILE_INPUT_UINTS_COUNT; i++) {
+    ULONG perc = 0;
+    for(ULONG i = 0; i < FILE_INPUT_UINTS_COUNT; i++) {
         UINT value = 0;
         const size_t sz = fread(&value, UINT_SIZE, 1, file );
         if( !sz) {
@@ -117,7 +174,7 @@ bool File::countAll()
             setBufferCount(i, value);
         }
 
-        LONG newPerc = i * 100 / FILE_INPUT_UINTS_COUNT;
+        ULONG newPerc = i * 100 / FILE_INPUT_UINTS_COUNT;
         if( newPerc != perc) {
             Msg::pop();
             printf("%lu%%", newPerc);
@@ -154,11 +211,11 @@ bool File::countModels(const string &pathToJsonFile)
 
     char* chunk = new char[BIG_JSON_READ_CHUNK + 1];
 
-    LONG bytesAll = 0;
+    ULONG bytesAll = 0;
 
     // process one single HHD record
-    auto processRecord = [&](uint32_t& offset ) {
-        uint32_t offsetStart = offset;
+    auto processRecord = [&](ULONG& offset) {
+        ULONG offsetStart = offset;
         while( chunk[offset] && chunk[offset] != '{' ) {
             offset ++;
         };
@@ -167,9 +224,9 @@ bool File::countModels(const string &pathToJsonFile)
             return false;
         }
 
-        uint32_t quotesCount = 0;
-        uint32_t quotesOffset = offsetStart;
-        uint32_t quotesLeft = 0;
+        UINT quotesCount = 0;
+        UINT quotesOffset = offsetStart;
+        UINT quotesLeft = 0;
 
         char modelName[BIG_JSON_MODEL_NAME_SIZE] = {0};
         char symbol = chunk[quotesOffset++];
@@ -182,7 +239,10 @@ bool File::countModels(const string &pathToJsonFile)
                 }
             }else
             if( quotesLeft ) {
-                modelName[quotesOffset - quotesLeft] = symbol;
+                // copy and make it uppercase
+                // (nice try with this "broken" model)
+                modelName[quotesOffset - quotesLeft] =
+                    symbol >= 'a' ? symbol - 'a' + 'A' : symbol;
             }
 
             symbol = chunk[quotesOffset++];
@@ -192,11 +252,13 @@ bool File::countModels(const string &pathToJsonFile)
             return false;
         }
 
-        JsonMap::iterator i = mMap.find(modelName);
+        ULONG modelValue = File::fromInversedBase36(modelName);
+
+        JsonMap::iterator i = mMap.find(modelValue);
         if( i != mMap.end() ) {
             i->second ++;
         }else {
-            mMap.emplace(modelName, 0);
+            mMap.emplace(modelValue, 0);
         }
 
         return true;
@@ -204,19 +266,17 @@ bool File::countModels(const string &pathToJsonFile)
 
     // Read some big chunk from the file
     // because it's too slow to read byte by byte
-    LONG offset = 0;
-    while(uint32_t bytesRed =
+    ULONG offset = 0;
+    while(UINT bytesRed =
            fread(&chunk[offset], 1, BIG_JSON_READ_CHUNK - offset, file)) {
 
         // process all records in that chunk
         bool isInterupted = false;
-        LONG newOffset = offset;
-        do {
-            offset = processRecord(newOffset, isInterupted);
-        } while(!isInterupted);
+        ULONG newOffset = offset;
+        while(!processRecord(newOffset));
 
-        LONG count = bytesRed - newOffset;
-        for( LONG i = 0; i < count; i++) {
+        ULONG count = bytesRed - newOffset;
+        for( ULONG i = 0; i < count; i++) {
             chunk[i] = chunk[i + offset];
         }
         offset += count;
