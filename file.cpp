@@ -1,11 +1,15 @@
+#include <cstring>
 #include "file.h"
+
 
 File::File()
 {
+    /* Base 36 conversion unit test
     char buffer[BASE36_MAX_DIGITS+1] = {0};
     ULONG number = File::fromInversedBase36("HGST2048T");
     File::toInversedBase36(number, buffer);
     printf("%s", buffer);
+    */
 }
 
 File::~File()
@@ -39,6 +43,8 @@ ULONG File::fromInversedBase36(const char *buffer)
     return result;
 }
 
+
+// No need to be super fast - it's just for printing
 char* File::toInversedBase36(ULONG number, char* result)
 {
     ULONG div = BASE36*BASE36*BASE36*
@@ -57,6 +63,7 @@ char* File::toInversedBase36(ULONG number, char* result)
         count ++;
     }
 
+    // convert it to string
     while(count++ < BASE36_MAX_DIGITS) {
         ULONG digit = number / div;
         char ch = digit > 9 ? digit + ('A' - 10) : digit + '0';
@@ -65,7 +72,7 @@ char* File::toInversedBase36(ULONG number, char* result)
         div /= BASE36;
     }
 
-    // and reverse it
+    // and reverse that string
     count = resultPos / 2;
     for( auto i = 0; i < count; i++) {
         char swap = result[i];
@@ -196,59 +203,84 @@ void File::freeCounters()
     mCounters = nullptr;
 }
 
-bool File::countModels(const string &pathToJsonFile)
+bool File::countModels(const char* pathToJsonFile)
 {
-    FILE *file = fopen(FILE_INPUT_PATH, "r");
+    Msg::info("*** Analysis task started. ***");
+
+    FILE *file = fopen(pathToJsonFile, "rb");
     if (!file) {
-        Msg::error("Error opening JSON file:" + pathToJsonFile);
+        Msg::error(string("Error opening JSON file:") + pathToJsonFile);
         return false;
     }
 
-    // No prudent error message, please
+    mMap.clear();
+
+    // Firstly I manage to guess the models count based on the file size
     fseek(file, 0, SEEK_END);
-    UINT fsize = ftell(file);
+    ULONG fsize = ftell(file);
     fseek(file, 0, SEEK_SET);
 
+    // But according to chatgpt:
+    // Based on industry history, the answer is likely:
+    // Tens of thousands of distinct HDD models
+    //Probably somewhere around 30,000–100,000+
+    // individual model numbers since 1956
+
+    // that's 8KB of memory for the keys
+    // and 4KB for the counts (12KB)
+    mMap.reserve(100000);
+
     char* chunk = new char[BIG_JSON_READ_CHUNK + 1];
+    memset(chunk, 0, BIG_JSON_READ_CHUNK + 1);
 
     ULONG bytesAll = 0;
 
-    // process one single HHD record
+
+    Msg::info(string("Reding ") + pathToJsonFile + "file:", false);
+    Msg::push();
+
+    /////////////////////////////////////////
+    // Sigma to process one single HHD record.
+    // Returns false if interupted before
+    // reaching end of the json
     auto processRecord = [&](ULONG& offset) {
-        ULONG offsetStart = offset;
+        // fast forward to the first open bracket
         while( chunk[offset] && chunk[offset] != '{' ) {
             offset ++;
         };
+
+        ULONG offsetChunk = offset;
 
         if( !chunk[offset] ) {
             return false;
         }
 
         UINT quotesCount = 0;
-        UINT quotesOffset = offsetStart;
         UINT quotesLeft = 0;
 
-        char modelName[BIG_JSON_MODEL_NAME_SIZE] = {0};
-        char symbol = chunk[quotesOffset++];
-        while(symbol && quotesCount != 5) {
+
+        char modelName[BASE36_MAX_DIGITS + 1] = {0};
+        char symbol = chunk[++offsetChunk];
+
+        while(symbol && quotesCount != 6) {
 
             if( symbol == '"' ) {
                 quotesCount ++;
-                if( quotesCount == 4 ) {
-                    quotesLeft = quotesOffset;
+                if( quotesCount == 5 ) {
+                    quotesLeft = offsetChunk;
                 }
             }else
             if( quotesLeft ) {
                 // copy and make it uppercase
                 // (nice try with this "broken" model)
-                modelName[quotesOffset - quotesLeft] =
+                modelName[offsetChunk - quotesLeft -1] =
                     symbol >= 'a' ? symbol - 'a' + 'A' : symbol;
             }
 
-            symbol = chunk[quotesOffset++];
+            symbol = chunk[++offsetChunk];
         }
 
-        if( quotesCount != 5 ) {
+        if( quotesCount != 6 ) {
             return false;
         }
 
@@ -261,28 +293,49 @@ bool File::countModels(const string &pathToJsonFile)
             mMap.emplace(modelValue, 0);
         }
 
-        return true;
+        offset = offsetChunk;
+        // fast forward to the closing bracket
+        while( chunk[offset] && chunk[offset] != '}' ) {
+            offset ++;
+        };
+
+        return chunk[offset] > 0;
     };
 
     // Read some big chunk from the file
     // because it's too slow to read byte by byte
-    ULONG offset = 0;
+    ULONG skippedCount = 0;
+    ULONG allBytesRed = 0;
     while(UINT bytesRed =
-           fread(&chunk[offset], 1, BIG_JSON_READ_CHUNK - offset, file)) {
+           fread(&chunk[skippedCount], 1, BIG_JSON_READ_CHUNK - skippedCount, file)) {
+
+        allBytesRed += bytesRed;
+
+        Msg::pop();
+        printf("%llu%%", allBytesRed * 100ull/fsize );
 
         // process all records in that chunk
-        bool isInterupted = false;
-        ULONG newOffset = offset;
-        while(!processRecord(newOffset));
+        ULONG offset = 0;
+        while(processRecord(offset));
 
-        ULONG count = bytesRed - newOffset;
-        for( ULONG i = 0; i < count; i++) {
+        // move all the unprocessed chunk content
+        // in the begining of the chunk buffer
+        skippedCount = BIG_JSON_READ_CHUNK - offset;
+        for( ULONG i = 0; i < skippedCount; i++) {
             chunk[i] = chunk[i + offset];
         }
-        offset += count;
-
-
     };
+
+    Msg::info("\nReading done!");
+    printf("Models count=%ld\n--------------\n", mMap.size());
+
+    for( auto i = mMap.begin(); i != mMap.end(); i++) {
+        char modelName[BASE36_MAX_DIGITS+1] = {0};
+        File::toInversedBase36(i->first, modelName);
+        printf("%s : %u\n", modelName, i->second);
+    }
+
+    Msg::info("---------------\n3) Analysis task finished!");
 
     delete [] chunk;
     return true;

@@ -11,12 +11,14 @@
 #define TERM_BOLD "\033[1m"
 #define TERM_UNDERLINE = "\033[4m"
 
-
-
-void Msg::print(const string& msg, const string& color)
+void Msg::print(const string& msg, const string& color, bool isNewLine)
 {
     string all = color + msg + TERM_END;
-    printf("%s\n", all.c_str() );
+    if( isNewLine ) {
+        printf("%s\n", all.c_str() );
+    }else {
+        printf("%s", all.c_str() );
+    }
 }
 
 void Msg::go(int row, int col)
@@ -29,19 +31,19 @@ void Msg::clrscr()
     printf("\033[2J");
 }
 
-void Msg::error(const string& msg)
+void Msg::error(const string& msg, bool isNewLine)
 {
-    Msg::print(msg, TERM_ERROR);
+    Msg::print(msg, TERM_ERROR, isNewLine);
 }
 
-void Msg::warning(const string &msg)
+void Msg::warning(const string &msg, bool isNewLine)
 {
-    Msg::print(msg, TERM_WARNING);
+    Msg::print(msg, TERM_WARNING, isNewLine);
 }
 
-void Msg::info(const string& msg)
+void Msg::info(const string& msg, bool isNewLine)
 {
-    Msg::print(msg, TERM_GREEN);
+    Msg::print(msg, TERM_GREEN, isNewLine);
 }
 
 void Msg::push()
