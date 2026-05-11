@@ -62,6 +62,25 @@ any conditionals/ifs, including for/while loops.
 */
 void taskFizzbuzz()
 {
+    
+    // Verify the output from assembly code
+    // with this test and get biggest reminder of division by 15
+    Msg::info("Testing fu");
+    int biggest = 0;
+    for(int i = 0; i < 100; i++) {
+        int reminder = i % 15;
+        if( i == 87 ) {
+            Msg::info(string("i = ") + to_string(i) + " reminder = " + to_string(reminder));
+        }
+        
+        if(reminder > biggest) {
+            biggest = reminder;
+        }
+    }
+
+    Msg::info(string("Biggest div = ") + to_string(biggest));
+
+
     Msg::info("*** Fizzbuzz ***");
     Fizzbuzz();
     Msg::info("Fizzbuzz finished!");
