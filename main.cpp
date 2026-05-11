@@ -3,6 +3,10 @@
 #define FILE_4BLN_PATH "../fourbln.bin"
 #define BIG_JSON_FILE_PATH "../bigf.json"
 
+extern "C" {
+    void Fizzbuzz();
+}
+
 // Not a standart lib sadly, so we need to decompress the big boy
 // #include <zlib.h>
 
@@ -56,11 +60,10 @@ Write a program that outputs the numbers from 1 to 100. If the number is divisib
 of it print “A”, if it’s divisible by 5 - “B”, if it’s divisible by 15 - “AB”. The catch is to write it without
 any conditionals/ifs, including for/while loops.
 */
-
 void taskFizzbuzz()
 {
-    Msg::info("*** 2) Fizzbuzz ***");
-    
+    Msg::info("*** Fizzbuzz ***");
+    Fizzbuzz();
     Msg::info("Fizzbuzz finished!");
 }
 
