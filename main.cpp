@@ -62,7 +62,7 @@ any conditionals/ifs, including for/while loops.
 */
 void taskFizzbuzz()
 {
-    
+
     // Verify the output from assembly code
     // with this test and get biggest reminder of division by 15
     Msg::info("Testing fu");
@@ -88,8 +88,6 @@ void taskFizzbuzz()
 
 int main(int argc, char *argv[])
 {
-    taskFizzbuzz();
-    /*
     Msg::clrscr();
 
     File file;
@@ -129,7 +127,5 @@ int main(int argc, char *argv[])
     ///// Task Analisys
     /////////////////////////////////
 
-
     file.countModels(BIG_JSON_FILE_PATH);
-*/
 }
