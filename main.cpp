@@ -60,17 +60,14 @@ any conditionals/ifs, including for/while loops.
 void taskFizzbuzz()
 {
     Msg::info("*** 2) Fizzbuzz ***");
-    int counter = 0;
-
-    asm volatile (
-    ""
-    );
-
+    
     Msg::info("Fizzbuzz finished!");
 }
 
 int main(int argc, char *argv[])
 {
+    taskFizzbuzz();
+    /*
     Msg::clrscr();
 
     File file;
@@ -112,4 +109,5 @@ int main(int argc, char *argv[])
 
 
     file.countModels(BIG_JSON_FILE_PATH);
+*/
 }

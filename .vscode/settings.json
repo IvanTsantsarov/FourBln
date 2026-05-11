@@ -1,0 +1,22 @@
+{
+    "cmake.configureOnOpen": true,
+    "cmake.buildDirectory": "${workspaceFolder}/build",
+
+    "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",
+
+    "C_Cpp.default.compileCommands": "${workspaceFolder}/build/compile_commands.json",
+
+    "files.associations": {
+        "*.tpp": "cpp",
+        "*.ipp": "cpp"
+    },
+
+    "debug.allowBreakpointsEverywhere": true,
+
+    "cmake.statusbar.advanced": {
+        "build": true,
+        "configure": true,
+        "debug": true,
+        "launch": true
+    }
+}
