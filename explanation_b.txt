@@ -1,0 +1,56 @@
+=================================================================
+Conclusion: Crashing after wrong generating of a key key
+=================================================================
+
+
+0x00400b4e      callq   sub.ifunc_41ada0_400360 ; sub.ifunc_41ada0_400360
+0x00400b53      leaq    0x00489ca4, %rdi
+0x00400b5a      callq   fcn.00406c70 ; fcn.00406c70
+0x00400b5f      movq    %rax, var_18h
+0x00400b63      movq    var_18h, %rax
+0x00400b67      movzbl  (%rax), %eax  <====== Crashes here, 
+
+because 0x00406c70 function generates wrong key:
+
+
+fcn.00406c70();
+0x00406c70      pushq   %r15
+0x00406c72      pushq   %r14
+0x00406c74      movq    %rdi, %r15
+0x00406c77      pushq   %r13
+0x00406c79      pushq   %r12
+0x00406c7b      pushq   %rbp
+0x00406c7c      pushq   %rbx
+0x00406c7d      subq    $8, %rsp
+0x00406c81      callq   fcn.00417e90 ; fcn.00417e90
+0x00406c86      movq    0x006b4640, %rbp
+0x00406c8d      testq   %rbp, %rbp
+0x00406c90      je      0x406d48
+0x00406c96      movq    %rax, %r13
+0x00406c99      movzbl  (%r15), %eax
+0x00406c9d      testb   %al, %al
+0x00406c9f      je      0x406d48
+0x00406ca5      cmpb    $0, 1(%r15)
+0x00406caa      jne     0x406cf0
+0x00406cac      movq    (%rbp), %rbx
+0x00406cb0      orb     $0x3d, %ah ; 61
+0x00406cb3      testq   %rbx, %rbx
+0x00406cb6      jne     0x406ccd
+0x00406cb8      jmp     0x406cd6
+0x00406cba      nopw    (%rax, %rax)
+0x00406cc0      addq    $8, %rbp
+0x00406cc4      movq    (%rbp), %rbx
+0x00406cc8      testq   %rbx, %rbx
+0x00406ccb      je      0x406cd6
+0x00406ccd      cmpw    (%rbx), %ax
+0x00406cd0      jne     0x406cc0
+0x00406cd2      addq    $2, %rbx
+0x00406cd6      addq    $8, %rsp
+0x00406cda      movq    %rbx, %rax
+0x00406cdd      popq    %rbx
+0x00406cde      popq    %rbp
+0x00406cdf      popq    %r12
+0x00406ce1      popq    %r13
+0x00406ce3      popq    %r14
+0x00406ce5      popq    %r15
+0x00406ce7      retq

@@ -1,6 +1,6 @@
 ==========================================================
-Conclusion: The author probably trying to allocate memory
-and doesn't check if the system refuse it
+Conclusion: The author (Petar?) probably trying to 
+allocate memory and doesn't check if the system refuse it
 ==========================================================
 Trace and explanation:
 
