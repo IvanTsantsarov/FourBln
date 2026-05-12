@@ -1,0 +1,62 @@
+==========================================================
+Conclusion: The author probably trying to allocate memory
+and doesn't check if the system refuse it
+==========================================================
+Trace and explanation:
+
+
+0x00414e30      pushq   %rbp
+0x00414e31      pushq   %rbx
+0x00414e32      subq    $0x18, %rsp
+0x00414e36      movq    0x004a4870, %rax
+0x00414e3d      testq   %rax, %rax
+0x00414e40      jne     0x414fc0
+0x00414e46      leaq    0x17(%rdi), %rax
+0x00414e4a      cmpq    $0x1f, %rax ; 31
+0x00414e4e      ja      0x414f10
+0x00414e54      xorl    %edx, %edx
+0x00414e56      movl    $0x20, %eax ; rax
+0x00414e5b      cmpq    %rdi, %rax
+0x00414e5e      jb      0x414fd0
+
+0x00414fd0      movq    $18446744073709551552, %rax <=== 1) Heating Thread Local Storage
+0x00414fd7      xorl    %edx, %edx <=============== 2) Drama starts with edx = 0
+0x00414fd9      movl    $0xc, %fs:(%rax) ; 12 <=== Setting the drama flag ENOMEM
+0x00414fe0      jmp     0x414f82
+
+0x00414f82      addq    $0x18, %rsp
+0x00414f86      movq    %rdx, %rax <================================== 3) rax = rdx
+0x00414f89      popq    %rbx
+0x00414f8a      popq    %rbp
+0x00414f8b      retq
+
+(return from 0x00414e30)
+0x004016fd      pushq   %rbp
+0x004016fe      movq    %rsp, %rbp
+0x00401701      subq    $0x420, %rsp
+0x00401708      movq    $0, -0x10(%rbp)
+0x00401710      movl    $0, %esi
+0x00401715      leaq    str.._pesho, %rdi ; 0x47c004
+0x0040171c      movl    $0, %eax
+0x00401721      callq   0x43c350
+0x00401726      movl    %eax, -0x14(%rbp)
+0x00401729      leaq    -0x420(%rbp), %rcx
+0x00401730      movl    -0x14(%rbp), %eax
+0x00401733      movl    $0x400, %edx ; rcx
+0x00401738      movq    %rcx, %rsi
+0x0040173b      movl    %eax, %edi
+0x0040173d      callq   0x43c510
+0x00401742      movq    %rax, -0x10(%rbp)
+0x00401746      movl    -0x14(%rbp), %eax
+0x00401749      movl    %eax, %edi
+0x0040174b      callq   0x43c8b0
+0x00401750      movq    -0x10(%rbp), %rax
+0x00401754      movq    %rax, %rdi
+0x00401757      callq   0x414e30 <======================== 3) returned from here
+0x0040175c      movq    %rax, -0x20(%rbp)   <==== stored in local var (but dont check it)
+0x00401760      movq    -0x20(%rbp), %rax   <==== loaded from the same local var
+0x00401764      movq    %rax, %rdx   <===== stored in rdx
+0x00401767      leaq    -0x420(%rbp), %rax
+0x0040176e      movl    $0x400, %ecx ; rcx
+0x00401773      movq    (%rax), %rsi
+0x00401776      movq    %rsi, (%rdx) <=== SEG FLT when trying to write to zero adress
