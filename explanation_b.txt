@@ -1,56 +1,62 @@
-=================================================================
-Conclusion: Crashing after wrong generating of a key key
-=================================================================
+==========================================================================
+Conclusion: Crashing after missin enviorenment variable (obsoleted TMPDIR)
+==========================================================================
+
+1) Right after the void main() entry point, it initializes misterious table with sumbols
+
+1.1) Standart entry
+0x00400aaf      movq    %rsp, %rbp
+0x00400ab2      subq    $0x50, %rsp
+
+1.2) Upload encoded string "momdkvjhradj|l|`|ps~u{w~vjnrr|?"
+0x00400ab6      movb    $0x6d, var_58h ; 'm' ; 109
+0x00400aba      movb    $0x6f, var_57h ; 'o' ; 111
+0x00400abe      movb    $0x6d, var_56h ; 'm' ; 109
+0x00400ac2      movb    $0x64, var_55h ; 'd' ; 100
+0x00400ac6      movb    $0x6b, var_54h ; 'k' ; 107
+0x00400aca      movb    $0x76, var_53h ; 'v' ; 118
+0x00400ace      movb    $0x6a, var_52h ; 'j' ; 106
+0x00400ad2      movb    $0x68, var_51h ; 'h' ; 104
+0x00400ad6      movb    $0x72, var_50h ; 'r' ; 114
+0x00400ada      movb    $0x61, var_4fh ; 'a' ; 97
+0x00400ade      movb    $0x64, var_4eh ; 'd' ; 100
+0x00400ae2      movb    $0x6a, var_4dh ; 'j' ; 106
+0x00400ae6      movb    $0x7c, var_4ch ; '|' ; 124
+0x00400aea      movb    $0x6c, var_4bh ; 'l' ; 108
+0x00400aee      movb    $0x7c, var_4ah ; '|' ; 124
+0x00400af2      movb    $0x60, var_49h ; '`' ; 96
+0x00400af6      movb    $0x7c, var_48h ; '|' ; 124
+0x00400afa      movb    $0x70, var_47h ; 'p' ; 112
+0x00400afe      movb    $0x73, var_46h ; 's' ; 115
+0x00400b02      movb    $0x7e, var_45h ; '~' ; 126
+0x00400b06      movb    $0x75, var_44h ; 'u' ; 117
+0x00400b0a      movb    $0x7b, var_43h ; '{' ; 123
+0x00400b0e      movb    $0x77, var_42h ; 'w' ; 119
+0x00400b12      movb    $0x7e, var_41h ; '~' ; 126
+0x00400b16      movb    $0x76, var_40h ; 'v' ; 118
+0x00400b1a      movb    $0x6a, var_3fh ; 'j' ; 106
+0x00400b1e      movb    $0x6e, var_3eh ; 'n' ; 110
+0x00400b22      movb    $0x72, var_3dh ; 'r' ; 114
+0x00400b26      movb    $0x72, var_3ch ; 'r' ; 114
+0x00400b2a      movb    $0x7c, var_3bh ; '|' ; 124
+0x00400b2e      movb    $0x3f, var_3ah ; '?' ; 63
+0x00400b32      movb    $0, var_39h
+0x00400b36      movl    $0, var_ch
+
+1.3) Zeroing second buffer
+0x00400b3d      leaq    var_38h, %rax
+0x00400b41      movl    $0x20, %edx ; rdx
+0x00400b46      movl    $0, %esi
+0x00400b4b      movq    %rax, %rdi
+0x00400b4e      callq   sub.ifunc_41ada0_400360 ; sub.ifunc_41ada0_400360 <=== memset (on 0x00431ce0)
 
 
-0x00400b4e      callq   sub.ifunc_41ada0_400360 ; sub.ifunc_41ada0_400360
-0x00400b53      leaq    0x00489ca4, %rdi
-0x00400b5a      callq   fcn.00406c70 ; fcn.00406c70
-0x00400b5f      movq    %rax, var_18h
+==== 2) Drama begins
+0x00400b53      leaq    0x00489ca4, %rdi <=== rdi = 0x00489ca4 contains TMPDIR
+
+==== 2.1) Try to find in evn variables TMPDIR
+0x00400b5a      callq   fcn.00406c70 ; fcn.00406c70 <================= string search
+0x00400b5f      movq    %rax, var_18h <==== result of the search as pointer
 0x00400b63      movq    var_18h, %rax
-0x00400b67      movzbl  (%rax), %eax  <====== Crashes here, 
+0x00400b67      movzbl  (%rax), %eax  <=================================== Aaaan crashes here!
 
-because 0x00406c70 function generates wrong key:
-
-
-fcn.00406c70();
-0x00406c70      pushq   %r15
-0x00406c72      pushq   %r14
-0x00406c74      movq    %rdi, %r15
-0x00406c77      pushq   %r13
-0x00406c79      pushq   %r12
-0x00406c7b      pushq   %rbp
-0x00406c7c      pushq   %rbx
-0x00406c7d      subq    $8, %rsp
-0x00406c81      callq   fcn.00417e90 ; fcn.00417e90
-0x00406c86      movq    0x006b4640, %rbp
-0x00406c8d      testq   %rbp, %rbp
-0x00406c90      je      0x406d48
-0x00406c96      movq    %rax, %r13
-0x00406c99      movzbl  (%r15), %eax
-0x00406c9d      testb   %al, %al
-0x00406c9f      je      0x406d48
-0x00406ca5      cmpb    $0, 1(%r15)
-0x00406caa      jne     0x406cf0
-0x00406cac      movq    (%rbp), %rbx
-0x00406cb0      orb     $0x3d, %ah ; 61
-0x00406cb3      testq   %rbx, %rbx
-0x00406cb6      jne     0x406ccd
-0x00406cb8      jmp     0x406cd6
-0x00406cba      nopw    (%rax, %rax)
-0x00406cc0      addq    $8, %rbp
-0x00406cc4      movq    (%rbp), %rbx
-0x00406cc8      testq   %rbx, %rbx
-0x00406ccb      je      0x406cd6
-0x00406ccd      cmpw    (%rbx), %ax
-0x00406cd0      jne     0x406cc0
-0x00406cd2      addq    $2, %rbx
-0x00406cd6      addq    $8, %rsp
-0x00406cda      movq    %rbx, %rax
-0x00406cdd      popq    %rbx
-0x00406cde      popq    %rbp
-0x00406cdf      popq    %r12
-0x00406ce1      popq    %r13
-0x00406ce3      popq    %r14
-0x00406ce5      popq    %r15
-0x00406ce7      retq
